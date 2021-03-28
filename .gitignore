@@ -1,0 +1,5 @@
+target/
+containers/*
+
+src/main/resources/parameters.conf
+.idea/
