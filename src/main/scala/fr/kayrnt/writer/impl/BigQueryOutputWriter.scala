@@ -4,7 +4,7 @@ import cats.effect.std.Semaphore
 import cats.effect.{IO, Resource}
 import com.typesafe.scalalogging.LazyLogging
 import fr.kayrnt.writer.OutputWriterClient
-import com.google.cloud.bigquery.{BigQuery, BigQueryException, CsvOptions, Field, JobId, Schema, StandardSQLTypeName, TableId, TimePartitioning, WriteChannelConfiguration}
+import com.google.cloud.bigquery.{BigQuery, BigQueryException, CsvOptions, Field, JobId, JobInfo, Schema, StandardSQLTypeName, TableId, TimePartitioning, WriteChannelConfiguration}
 import fr.kayrnt.model.ColumnSize
 import fr.kayrnt.reader.Partitions
 
@@ -12,10 +12,11 @@ import java.nio.channels.Channels
 import java.nio.file.Files
 import java.nio.file.Path
 import scala.util.chaining.scalaUtilChainingOps
+import scala.jdk.CollectionConverters._
 
 class BigQueryOutputWriter(
     bq: BigQuery,
-    concurrentQueriesSemaphore: IO[Semaphore[IO]],
+    outputProjectName: String,
     outputDatasetName: String,
     outputTableName: String,
     outputFilePath: String,
@@ -58,10 +59,12 @@ class BigQueryOutputWriter(
             // Skip header row in the file.
             val csvOptions = CsvOptions.newBuilder().setSkipLeadingRows(1).build()
 
-            val tableId = TableId.of(outputDatasetName, outputTableName)
+            val tableId = TableId.of(outputProjectName, outputDatasetName, outputTableName)
             val writeChannelConfiguration = WriteChannelConfiguration
               .newBuilder(tableId)
               .setSchema(schema)
+              .setSchemaUpdateOptions(List(JobInfo.SchemaUpdateOption.ALLOW_FIELD_ADDITION).asJava)
+              .setWriteDisposition(JobInfo.WriteDisposition.WRITE_TRUNCATE)
               .setFormatOptions(csvOptions)
               .pipe(b => partitioning.map(b.setTimePartitioning).getOrElse(b))
               .build

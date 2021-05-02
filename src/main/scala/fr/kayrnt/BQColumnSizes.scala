@@ -1,8 +1,14 @@
 package fr.kayrnt
 
-import caseapp.{ExtraName, HelpMessage}
+import caseapp.core.app.CaseApp
+import caseapp.{AppName, AppVersion, ExtraName, HelpMessage, ProgName, RemainingArgs}
+import com.typesafe.scalalogging.LazyLogging
+import fr.kayrnt.logic.BQColumnSizesLogic
 
-case class AppParameters(
+@AppName("BQColumnSizes")
+@AppVersion("1.0.0")
+@ProgName("bq-column-sizes")
+case class BQColumnSizesOpts(
     @ExtraName("ep")
     @HelpMessage("GCP project id used for query execution if different from read.")
     executionProjectId: Option[String],
@@ -36,6 +42,11 @@ case class AppParameters(
       "output writer such as bq or csv, default to csv"
     )
     outputWriter: Option[String],
+    @ExtraName("op")
+    @HelpMessage(
+      "Bigquery output project when bq output type is selected, default to the projectId field."
+    )
+    outputProject: Option[String],
     @ExtraName("od")
     @HelpMessage(
       "Bigquery output dataset when bq output type is selected"
@@ -50,7 +61,21 @@ case class AppParameters(
     @HelpMessage(
       """Partition to analyze, if not specified all partitions will be analyzed.
         |Format: yyyy, yyyyMM, yyyyMMdd, yyyyyMMddHH
-        |Example: 20210101"""".stripMargin
+        |Example: 20210101""".stripMargin
     )
     partition: Option[String],
 )
+
+object BQColumnSizes extends CaseApp[BQColumnSizesOpts] with LazyLogging {
+
+  def run(options: BQColumnSizesOpts, arg: RemainingArgs): Unit = {
+
+    logger.info("options :" + options)
+    logger.info("unhandled args :" + arg.toString())
+
+    BQColumnSizesLogic.run(options)
+
+    logger.info("Exiting...")
+  }
+
+}

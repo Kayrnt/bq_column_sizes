@@ -1,14 +1,12 @@
-package fr.kayrnt
+package fr.kayrnt.logic
 
-import caseapp.core.app.CaseApp
-import caseapp.RemainingArgs
-import cats.effect.std.Semaphore
 import cats.effect.IO
+import cats.effect.std.Semaphore
+import cats.effect.unsafe.implicits.global
+import cats.implicits._
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.cloud.bigquery.{BigQuery, BigQueryOptions, DatasetId, TableId}
-import cats.implicits._
-import cats.effect.unsafe.implicits.global
-import com.typesafe.scalalogging.LazyLogging
+import fr.kayrnt.BQColumnSizesOpts
 import fr.kayrnt.model.ColumnSize
 import fr.kayrnt.reader.Tables
 import fr.kayrnt.writer.OutputWriter
@@ -16,12 +14,9 @@ import fr.kayrnt.writer.impl.{BigQueryOutputWriter, CsvOutputWriter}
 
 import scala.jdk.CollectionConverters._
 
-object BQColumnSizes extends CaseApp[AppParameters] with LazyLogging {
+object BQColumnSizesLogic {
 
-  def run(options: AppParameters, arg: RemainingArgs): Unit = {
-
-    logger.info("options :" + options)
-    logger.info("unhandled args :" + arg.toString())
+  def run(options: BQColumnSizesOpts): Unit = {
 
     val concurrentQueriesSemaphore: IO[Semaphore[IO]] =
       Semaphore[IO](options.maxConcurrentQueries.map(_.toLong).getOrElse(4))
@@ -47,6 +42,8 @@ object BQColumnSizes extends CaseApp[AppParameters] with LazyLogging {
 
     val outputWriter = options.outputWriter.getOrElse("csv")
 
+    val outputProject = options.outputProject.getOrElse(options.projectId)
+
     val outputDataset = options.outputDataset.getOrElse {
       if (outputWriter == "bq")
         throw new IllegalArgumentException("BQ output dataset expected with BQ output")
@@ -63,7 +60,7 @@ object BQColumnSizes extends CaseApp[AppParameters] with LazyLogging {
       case "bq" =>
         new BigQueryOutputWriter(
           bq,
-          concurrentQueriesSemaphore,
+          outputProject,
           outputDataset,
           outputTable,
           outputFilePath,
@@ -113,7 +110,6 @@ object BQColumnSizes extends CaseApp[AppParameters] with LazyLogging {
 
     }
 
-    logger.info("Exiting...")
   }
 
 }
