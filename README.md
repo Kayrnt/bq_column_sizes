@@ -1,5 +1,7 @@
 # BQ Column sizes
 
+[![](https://jitpack.io/v/Kayrnt/bq_column_sizes.svg)](https://jitpack.io/#Kayrnt/bq_column_sizes)
+
 This project is meant to allow extract column sizes from BigQuery tables to monitor fields weight changes over time.
 
 ## How it works
