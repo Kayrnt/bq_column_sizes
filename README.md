@@ -8,6 +8,19 @@ This project is meant to allow extract column sizes from BigQuery tables to moni
 
 The job will scan selected GCP project / datasets / tables then scan for partitions to launch a select as dry run per field and per partition to store the bytes that would be read.
 
+## How to launch
+
+There is multiple ways to start the job:
+- Clone the source code a build the project to run the `BQColumnSizes` (Main) class
+- Install Coursier and fetch the Jitpack package
+
+The Coursier + Jitpack option is likely easier to use:
+1. Install [Coursier](https://get-coursier.io/docs/cli-installation)
+2. Fetch the dependency from Jitpack 
+   ```coursier fetch -r jitpack com.github.Kayrnt:bq_column_sizes:master-SNAPSHOT```
+3. Start the job
+```coursier launch -r jitpack com.github.Kayrnt:bq_column_sizes:master-SNAPSHOT -- --help```
+
 ## Usage
 
 ``` 
