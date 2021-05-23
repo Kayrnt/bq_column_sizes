@@ -6,6 +6,10 @@ import com.google.cloud.bigquery.{BigQuery, Field, Job, JobInfo, QueryJobConfigu
 import com.typesafe.scalalogging.LazyLogging
 import fr.kayrnt.model.Partition
 
+import java.time.format.DateTimeFormatter
+import scala.jdk.DurationConverters._
+import java.time.{LocalDate, LocalDateTime, ZoneId, ZoneOffset}
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -16,6 +20,46 @@ object Partitions extends LazyLogging {
     case 6  => TimePartitioning.Type.MONTH
     case 8  => TimePartitioning.Type.DAY
     case 10 => TimePartitioning.Type.HOUR
+  }
+
+  def applyOffset(partition: String, offset: Duration): String = {
+
+    val finiteOffset: FiniteDuration = offset match {
+      case f: FiniteDuration => f
+      case _                 => throw new IllegalArgumentException(s"Unexpected offset $offset should be finite")
+    }
+
+    val instant = partition.length match {
+      case 4 => LocalDate.of(partition.toInt, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC)
+      case 6 =>
+        LocalDate
+          .of(
+            partition.substring(0, 4).toInt,
+            partition.substring(4, 6).toInt,
+            1
+          ).atStartOfDay().toInstant(ZoneOffset.UTC)
+      case 8 =>
+        LocalDate
+          .of(
+            partition.substring(0, 4).toInt,
+            partition.substring(4, 6).toInt,
+            partition.substring(6, 8).toInt
+          ).atStartOfDay().toInstant(ZoneOffset.UTC)
+      case 10 =>
+        LocalDateTime
+          .of(
+            partition.substring(0, 4).toInt,
+            partition.substring(4, 6).toInt,
+            partition.substring(6, 8).toInt,
+            partition.substring(8, 10).toInt,
+            0
+          ).toInstant(ZoneOffset.UTC)
+    }
+
+    DateTimeFormatter
+      .ofPattern("yyyyMMddHH".take(partition.length))
+      .withZone(ZoneId.of("UTC"))
+      .format(instant.minus(finiteOffset.toJava))
   }
 
   def formatPartition(partition: String): String =
@@ -67,24 +111,21 @@ object Partitions extends LazyLogging {
       fields: Seq[Field],
       partitioningField: String,
       partitioningType: TimePartitioning.Type
-  ): String = {
+  ): Option[String] = {
 
     val partitioningFieldType =
       fields
         .find(f => f.getName == partitioningField)
         .map(f => f.getType.getStandardType)
-        .getOrElse {
+        .orElse {
           partitioningField match {
-            case "_PARTITIONTIME" => StandardSQLTypeName.TIMESTAMP
-            case "_PARTITIONDATE" => StandardSQLTypeName.DATE
-            case _ =>
-              throw new IllegalStateException(
-                s"Unable to find type for partitioning field ($partitioningField) / partitioning type ($partitioningType) "
-              )
+            case "_PARTITIONTIME" => Some(StandardSQLTypeName.TIMESTAMP)
+            case "_PARTITIONDATE" => Some(StandardSQLTypeName.DATE)
+            case _                => None
           }
         }
 
-    partitioningFieldType match {
+    partitioningFieldType.collect {
       case StandardSQLTypeName.TIMESTAMP => "PARSE_TIMESTAMP"
       case StandardSQLTypeName.DATE      => "PARSE_DATE"
       case _ =>

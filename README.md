@@ -54,6 +54,10 @@ Usage: bq-column-sizes [options]
         Partition to analyze, if not specified all partitions will be analyzed.
 Format: yyyy, yyyyMM, yyyyMMdd, yyyyyMMddHH
 Example: 20210101
+  --offset  <string?>
+        Partition offset as duration
+Format: <length><unit> based on scala.concurrent.duration.Duration
+Example: 1hour, 1d
 
 ```
 

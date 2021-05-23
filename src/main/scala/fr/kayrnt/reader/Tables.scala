@@ -58,8 +58,14 @@ object Tables extends LazyLogging {
 
     val fields: Seq[Field] = schema.getFields.iterator().asScala.toList
 
-    val partitioningFieldTypeFunction =
-      Partitions.getPartitioningFieldTypeFunction(fields, partitioningField, partitioningType)
+    val partitioningFieldTypeFunction: String =
+      Partitions
+        .getPartitioningFieldTypeFunction(fields, partitioningField, partitioningType)
+        .getOrElse(
+          throw new IllegalStateException(
+            s"Unable to find type for partitioning field ($partitioningField) / partitioning type ($partitioningType)"
+          )
+        )
 
     fields
       .map { f =>

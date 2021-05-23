@@ -8,11 +8,12 @@ import com.google.auth.oauth2.GoogleCredentials
 import com.google.cloud.bigquery.{BigQuery, BigQueryOptions, DatasetId, TableId}
 import fr.kayrnt.BQColumnSizesOpts
 import fr.kayrnt.model.ColumnSize
-import fr.kayrnt.reader.Tables
+import fr.kayrnt.reader.{Partitions, Tables}
 import fr.kayrnt.writer.OutputWriter
 import fr.kayrnt.writer.impl.{BigQueryOutputWriter, CsvOutputWriter}
 
 import scala.jdk.CollectionConverters._
+import scala.reflect.runtime.universe.Try
 
 object BQColumnSizesLogic {
 
@@ -56,6 +57,11 @@ object BQColumnSizesLogic {
       else ""
     }
 
+    val partition = options.offset.map(o => scala.concurrent.duration.Duration(o)) match {
+      case Some(offset) => options.partition.map(p => Partitions.applyOffset(p, offset))
+      case None         => options.partition
+    }
+
     val outputWriterImpl = outputWriter match {
       case "bq" =>
         new BigQueryOutputWriter(
@@ -64,9 +70,9 @@ object BQColumnSizesLogic {
           outputDataset,
           outputTable,
           outputFilePath,
-          options.partition
+          partition
         )
-      case _ => new CsvOutputWriter(outputFilePath, options.partition)
+      case _ => new CsvOutputWriter(outputFilePath, partition)
     }
 
     (options.dataset, options.table) match {
@@ -81,7 +87,7 @@ object BQColumnSizesLogic {
             options.projectId,
             table,
             csvWriter,
-            options.partition
+            partition
           )).toList.sequence
         }.unsafeRunSync()
       case (Some(dataset), None) =>
@@ -94,13 +100,13 @@ object BQColumnSizesLogic {
             options.projectId,
             table,
             csvWriter,
-            options.partition
+            partition
           )).toList.sequence
         }.unsafeRunSync()
       case (Some(dataset), Some(table)) =>
         withResources(outputWriterImpl) { (sem, csvWriter) =>
           val tableData = bq.getTable(TableId.of(options.projectId, dataset, table))
-          Tables.analyzeTable(bq, sem, options.projectId, tableData, csvWriter, options.partition)
+          Tables.analyzeTable(bq, sem, options.projectId, tableData, csvWriter, partition)
         }.unsafeRunSync()
       case (_, Some(_)) =>
         throw new IllegalArgumentException(

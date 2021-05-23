@@ -64,6 +64,12 @@ case class BQColumnSizesOpts(
         |Example: 20210101""".stripMargin
     )
     partition: Option[String],
+    @HelpMessage(
+      """Partition offset as duration
+        |Format: <length><unit> based on scala.concurrent.duration.Duration
+        |Example: 1hour, 1d""".stripMargin
+    )
+    offset: Option[String],
 )
 
 object BQColumnSizes extends CaseApp[BQColumnSizesOpts] with LazyLogging {

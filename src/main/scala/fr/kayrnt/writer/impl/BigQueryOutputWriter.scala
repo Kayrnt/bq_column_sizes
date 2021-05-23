@@ -1,6 +1,5 @@
 package fr.kayrnt.writer.impl
 
-import cats.effect.std.Semaphore
 import cats.effect.{IO, Resource}
 import com.typesafe.scalalogging.LazyLogging
 import fr.kayrnt.writer.OutputWriterClient
@@ -54,19 +53,30 @@ class BigQueryOutputWriter(
 
         override def close(): Unit = {
           csvWriterClient.close()
-          logger.info(s"Writing output to $outputDatasetName.$outputTableName")
+          val outputTableNameWithPartition =
+            partitionOpt.map(p => s"$outputTableName$$$p").getOrElse(outputTableName)
+          logger.info(s"Writing output to $outputDatasetName.$outputTableNameWithPartition")
           try {
             // Skip header row in the file.
             val csvOptions = CsvOptions.newBuilder().setSkipLeadingRows(1).build()
 
-            val tableId = TableId.of(outputProjectName, outputDatasetName, outputTableName)
+            val tableId =
+              TableId.of(outputProjectName, outputDatasetName, outputTableNameWithPartition)
             val writeChannelConfiguration = WriteChannelConfiguration
               .newBuilder(tableId)
               .setSchema(schema)
-              .setSchemaUpdateOptions(List(JobInfo.SchemaUpdateOption.ALLOW_FIELD_ADDITION).asJava)
               .setWriteDisposition(JobInfo.WriteDisposition.WRITE_TRUNCATE)
               .setFormatOptions(csvOptions)
-              .pipe(b => partitioning.map(b.setTimePartitioning).getOrElse(b))
+              .pipe(b =>
+                partitioning
+                  .map(
+                    b.setTimePartitioning(_)
+                      .setSchemaUpdateOptions(
+                        List(JobInfo.SchemaUpdateOption.ALLOW_FIELD_ADDITION).asJava
+                      )
+                  )
+                  .getOrElse(b)
+              )
               .build
 
             val jobId  = JobId.newBuilder.setLocation("US").build
