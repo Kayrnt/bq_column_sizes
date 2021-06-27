@@ -73,6 +73,7 @@ case class BQColumnSizesOpts(
 )
 
 object BQColumnSizes extends CaseApp[BQColumnSizesOpts] with LazyLogging {
+  override val ignoreUnrecognized: Boolean = true
 
   def run(options: BQColumnSizesOpts, arg: RemainingArgs): Unit = {
 
