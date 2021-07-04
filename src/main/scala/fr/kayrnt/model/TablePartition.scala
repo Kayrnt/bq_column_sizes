@@ -3,7 +3,7 @@ package fr.kayrnt.model
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-case class Partition(
+case class TablePartition(
     partitionId: String,
     function: String,
     bqFormatString: String,
@@ -16,13 +16,13 @@ case class Partition(
       .format(DateTimeFormatter.ISO_DATE_TIME)
 }
 
-object Partition {
+object TablePartition {
 
-  private val defaultPartition = "2021010100"
+  private val defaultPartition = "YYYY010100"
 
-  def apply(partitionId: String, function: String): Partition = {
+  def apply(partitionId: String, function: String): TablePartition = {
     val toAppendForLocalDateTimeFormat = defaultPartition.substring(partitionId.length)
-    Partition(partitionId + toAppendForLocalDateTimeFormat, function, "%Y%m%d%H", "yyyyMMddHH")
+    TablePartition(partitionId + toAppendForLocalDateTimeFormat, function, "%Y%m%d%H", "yyyyMMddHH")
   }
 
 }

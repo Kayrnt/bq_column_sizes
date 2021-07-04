@@ -5,9 +5,11 @@ import cats.effect.std.Semaphore
 import cats.implicits._
 import com.google.cloud.bigquery._
 import com.typesafe.scalalogging.LazyLogging
-import fr.kayrnt.model.ColumnSize
+import fr.kayrnt.model.{ColumnSize, JobPartition}
 
 import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
+import scala.util.{Success, Try}
 
 object Tables extends LazyLogging {
 
@@ -18,8 +20,8 @@ object Tables extends LazyLogging {
       table: Table,
       rowWriter: ColumnSize => IO[_],
       partition: scala.Option[String]
-  ): IO[Unit] = {
-    val definition: TableDefinition = table.getDefinition()
+  ): IO[Unit] = try {
+    val definition: TableDefinition = table.getDefinition
     definition match {
       case std: StandardTableDefinition =>
         analyzeTableDefinition(bq, sem, projectId, table, std, rowWriter, partition)
@@ -28,7 +30,12 @@ object Tables extends LazyLogging {
           s"Unsupported table definition $definition"
         )
     }
-
+  } catch {
+    case NonFatal(e) =>
+      throw new IllegalStateException(
+        s"Couldn't retrieve definition for table $table. Are you sure that this table exists?",
+        e
+      )
   }
 
   def analyzeTableDefinition(
@@ -67,36 +74,39 @@ object Tables extends LazyLogging {
           )
         )
 
-    fields
-      .map { f =>
-        val fieldName = f.getName
+    val partitions = Partitions
+      .getPartitions(bq, sem, tableReference, partitioningFieldTypeFunction, partition)
 
-        Partitions
-          .getPartitions(bq, sem, tableReference, partitioningFieldTypeFunction, partition)
-          .flatMap { partitions =>
-            partitions.map { partition =>
-              val query = s"""|#standardSQL
-                              |SELECT $fieldName
-                              |FROM `$tableReference`
-                              |WHERE $partitioningField = ${partition.toCondition}
-                              |""".stripMargin
-              getQueryBytes(
-                bq,
-                query
-              ).flatMap { sizeInBytes =>
-                val cs = ColumnSize(
-                  projectId,
-                  dataset,
-                  tableStr,
-                  fieldName,
-                  partition.formattedOutput,
-                  sizeInBytes
-                )
-                rowWriter(cs)
-              }
-            }.sequence
+    partitions
+      .flatMap { partitions =>
+        partitions.flatMap { partition =>
+          fields.map { f =>
+            val fieldName = f.getName
+
+            val query =
+              s"""|#standardSQL
+                  |SELECT $fieldName
+                  |FROM `$tableReference`
+                  |WHERE $partitioningField = ${partition.toCondition}
+                  |""".stripMargin
+            getQueryBytes(
+              bq,
+              query
+            ).flatMap { sizeInBytes =>
+              val cs = ColumnSize(
+                partition.formattedOutput, //TODO format for partition frequency
+                projectId,
+                dataset,
+                tableStr,
+                fieldName,
+                partition.formattedOutput,
+                sizeInBytes
+              )
+              rowWriter(cs)
+            }
           }
-      }.sequence.map(_ => ())
+        }.sequence
+      }.map(_ => ())
   }
 
   def getQueryBytes(bq: BigQuery, queryString: String): IO[Long] = {

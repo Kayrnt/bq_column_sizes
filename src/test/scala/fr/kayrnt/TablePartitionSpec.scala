@@ -1,27 +1,27 @@
 package fr.kayrnt
 
 import com.google.cloud.bigquery.{Field, StandardSQLTypeName, TimePartitioning}
-import fr.kayrnt.model.Partition
+import fr.kayrnt.model.TablePartition
 import fr.kayrnt.reader.Partitions
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import scala.concurrent.duration.Duration
 
-class PartitionSpec extends AnyWordSpec with Matchers {
+class TablePartitionSpec extends AnyWordSpec with Matchers {
 
   "Partition" should {
     "compute formattedOutput properly on hourly partitions" in {
-      Partition("2021010100", "").formattedOutput should be("2021-01-01T00:00:00")
+      TablePartition("2021010100", "").formattedOutput should be("2021-01-01T00:00:00")
     }
     "compute formattedOutput properly on daily partitions" in {
-      Partition("20210101", "").formattedOutput should be("2021-01-01T00:00:00")
+      TablePartition("20210101", "").formattedOutput should be("2021-01-01T00:00:00")
     }
     "compute formattedOutput properly on monthly partitions" in {
-      Partition("202101", "").formattedOutput should be("2021-01-01T00:00:00")
+      TablePartition("202101", "").formattedOutput should be("2021-01-01T00:00:00")
     }
     "compute formattedOutput properly on yearly partitions" in {
-      Partition("2021", "").formattedOutput should be("2021-01-01T00:00:00")
+      TablePartition("2021", "").formattedOutput should be("2021-01-01T00:00:00")
     }
     "compute applyOffset properly on hourly" in {
       Partitions.applyOffset("2021010100", Duration("1hour")) should be("2020123123")
