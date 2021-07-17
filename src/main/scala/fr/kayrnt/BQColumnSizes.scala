@@ -64,6 +64,13 @@ case class BQColumnSizesOpts(
         |Example: 20210101""".stripMargin
     )
     partition: Option[String],
+    @ExtraName("jf")
+    @HelpMessage(
+      """Job frequency: it's how often you're going to run the job so that the job know how to partition the data.
+        |Values: year, month, day, hour.
+        |Default to day.""".stripMargin
+    )
+    jobFrequency: Option[String],
     @HelpMessage(
       """Partition offset as duration
         |Format: <length><unit> based on scala.concurrent.duration.Duration

@@ -16,8 +16,15 @@ class CsvOutputWriter(outputFilePath: String, partitionOpt: Option[String])
 
   private val csvSemaphore = Semaphore[IO](1)
   private val columnsName =
-    List("project_id", "dataset", "table", "field", "partition", "size_in_bytes")
-      .pipe(l => if (partitionOpt.isDefined) "date" :: l else l)
+    List(
+      "job_partition",
+      "project_id",
+      "dataset",
+      "table",
+      "field",
+      "table_partition",
+      "size_in_bytes"
+    )
 
   protected val csvClient: Resource[IO, OutputWriterClient] = Resource.fromAutoCloseable {
     IO {
@@ -36,7 +43,6 @@ class CsvOutputWriter(outputFilePath: String, partitionOpt: Option[String])
               IO {
                 val row =
                   columnSize.toList
-                    .pipe(l => partitionOpt.map(p => p :: l).getOrElse(l))
                 logger.info("Write row : " + row)
                 w.writeRow(row)
               }

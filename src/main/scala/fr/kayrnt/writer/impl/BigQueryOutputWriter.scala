@@ -4,7 +4,7 @@ import cats.effect.{IO, Resource}
 import com.typesafe.scalalogging.LazyLogging
 import fr.kayrnt.writer.OutputWriterClient
 import com.google.cloud.bigquery.{BigQuery, BigQueryException, CsvOptions, Field, JobId, JobInfo, Schema, StandardSQLTypeName, TableId, TimePartitioning, WriteChannelConfiguration}
-import fr.kayrnt.model.ColumnSize
+import fr.kayrnt.model.{ColumnSize, JobPartition}
 import fr.kayrnt.reader.Partitions
 
 import java.nio.channels.Channels
@@ -19,30 +19,28 @@ class BigQueryOutputWriter(
     outputDatasetName: String,
     outputTableName: String,
     outputFilePath: String,
-    partitionOpt: Option[String]
+    partitionOpt: Option[String],
+    jobPartition: JobPartition,
 ) extends CsvOutputWriter(outputFilePath, partitionOpt)
     with LazyLogging {
 
   val fields = List(
+    Field.of("job_partition", StandardSQLTypeName.TIMESTAMP),
     Field.of("project_id", StandardSQLTypeName.STRING),
     Field.of("dataset", StandardSQLTypeName.STRING),
     Field.of("table", StandardSQLTypeName.STRING),
     Field.of("field", StandardSQLTypeName.STRING),
-    Field.of("partition", StandardSQLTypeName.TIMESTAMP),
+    Field.of("table_partition", StandardSQLTypeName.TIMESTAMP),
     Field.of("size_in_bytes", StandardSQLTypeName.INT64)
   )
 
-  val schema =
-    if (partitionOpt.isDefined)
-      Schema.of(Field.of("date", StandardSQLTypeName.TIMESTAMP) :: fields: _*)
-    else Schema.of(fields: _*)
+  val schema: Schema = Schema.of(fields: _*)
 
-  val partitioning = partitionOpt.map { partition =>
+  val partitioning: TimePartitioning =
     TimePartitioning
-      .newBuilder(Partitions.extractPartitioningType(partition))
-      .setField("date")
+      .newBuilder(jobPartition.timePartitioning)
+      .setField("job_partition")
       .build()
-  }
 
   override val client: Resource[IO, OutputWriterClient] =
     csvClient.map { csvWriterClient =>
@@ -67,16 +65,7 @@ class BigQueryOutputWriter(
               .setSchema(schema)
               .setWriteDisposition(JobInfo.WriteDisposition.WRITE_TRUNCATE)
               .setFormatOptions(csvOptions)
-              .pipe(b =>
-                partitioning
-                  .map(
-                    b.setTimePartitioning(_)
-                      .setSchemaUpdateOptions(
-                        List(JobInfo.SchemaUpdateOption.ALLOW_FIELD_ADDITION).asJava
-                      )
-                  )
-                  .getOrElse(b)
-              )
+              .pipe(_.setTimePartitioning(partitioning))
               .build
 
             val jobId  = JobId.newBuilder.setLocation("US").build

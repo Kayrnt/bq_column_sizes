@@ -7,13 +7,12 @@ import cats.implicits._
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.cloud.bigquery.{BigQuery, BigQueryOptions, DatasetId, TableId}
 import fr.kayrnt.BQColumnSizesOpts
-import fr.kayrnt.model.ColumnSize
+import fr.kayrnt.model.{ColumnSize, JobLevel, JobPartition}
 import fr.kayrnt.reader.{Partitions, Tables}
 import fr.kayrnt.writer.OutputWriter
 import fr.kayrnt.writer.impl.{BigQueryOutputWriter, CsvOutputWriter}
 
 import scala.jdk.CollectionConverters._
-import scala.reflect.runtime.universe.Try
 
 object BQColumnSizesLogic {
 
@@ -62,6 +61,13 @@ object BQColumnSizesLogic {
       case None         => options.partition
     }
 
+    val jobFrequency =
+      JobLevel.jobLevel(options.jobFrequency.getOrElse("day"))
+
+    val jobPartition = options.partition
+      .map(p => JobPartition(p, jobFrequency))
+      .getOrElse(JobPartition(jobFrequency))
+
     val outputWriterImpl = outputWriter match {
       case "bq" =>
         new BigQueryOutputWriter(
@@ -70,7 +76,8 @@ object BQColumnSizesLogic {
           outputDataset,
           outputTable,
           outputFilePath,
-          partition
+          partition,
+          jobPartition
         )
       case _ => new CsvOutputWriter(outputFilePath, partition)
     }
@@ -106,7 +113,14 @@ object BQColumnSizesLogic {
       case (Some(dataset), Some(table)) =>
         withResources(outputWriterImpl) { (sem, csvWriter) =>
           val tableData = bq.getTable(TableId.of(options.projectId, dataset, table))
-          Tables.analyzeTable(bq, sem, options.projectId, tableData, csvWriter, partition)
+          Tables.analyzeTable(
+            bq,
+            sem,
+            options.projectId,
+            tableData,
+            csvWriter,
+            partition
+          )
         }.unsafeRunSync()
       case (_, Some(_)) =>
         throw new IllegalArgumentException(

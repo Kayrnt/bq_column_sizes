@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.effect.std.Semaphore
 import com.google.cloud.bigquery.{BigQuery, Field, Job, JobInfo, QueryJobConfiguration, StandardSQLTypeName, TimePartitioning}
 import com.typesafe.scalalogging.LazyLogging
-import fr.kayrnt.model.Partition
+import fr.kayrnt.model.{TablePartition, TimeFormatting}
 
 import java.time.format.DateTimeFormatter
 import scala.jdk.DurationConverters._
@@ -15,12 +15,13 @@ import scala.util.Try
 
 object Partitions extends LazyLogging {
 
-  def extractPartitioningType(partition: String): TimePartitioning.Type = partition.length match {
-    case 4  => TimePartitioning.Type.YEAR
-    case 6  => TimePartitioning.Type.MONTH
-    case 8  => TimePartitioning.Type.DAY
-    case 10 => TimePartitioning.Type.HOUR
-  }
+  def extractPartitioningTypeFromPartition(partition: String): TimePartitioning.Type =
+    partition.length match {
+      case 4  => TimePartitioning.Type.YEAR
+      case 6  => TimePartitioning.Type.MONTH
+      case 8  => TimePartitioning.Type.DAY
+      case 10 => TimePartitioning.Type.HOUR
+    }
 
   def applyOffset(partition: String, offset: Duration): String = {
 
@@ -57,7 +58,7 @@ object Partitions extends LazyLogging {
     }
 
     DateTimeFormatter
-      .ofPattern("yyyyMMddHH".take(partition.length))
+      .ofPattern(TimeFormatting.hourlyFormat.take(partition.length))
       .withZone(ZoneId.of("UTC"))
       .format(instant.minus(finiteOffset.toJava))
   }
@@ -76,7 +77,7 @@ object Partitions extends LazyLogging {
       tableReference: String,
       partitioningFieldTypeFunction: String,
       partitionOpt: Option[String]
-  ): IO[List[Partition]] = {
+  ): IO[List[TablePartition]] = {
     val whereClause = partitionOpt
       .map(partition =>
         s"""\nWHERE partition_id LIKE "${formatPartition(partition)}" """
@@ -92,7 +93,7 @@ object Partitions extends LazyLogging {
     runQuery(bq, sem, query).map { j =>
       j.getQueryResults().iterateAll().asScala.map { v =>
           val value = v.get(0).getStringValue
-          Partition(value, partitioningFieldTypeFunction)
+          TablePartition(value, partitioningFieldTypeFunction)
         }.toList
     }
   }
