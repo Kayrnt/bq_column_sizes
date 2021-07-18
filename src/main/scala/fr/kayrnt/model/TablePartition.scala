@@ -5,24 +5,21 @@ import java.time.format.DateTimeFormatter
 
 case class TablePartition(
     partitionId: String,
-    function: String,
-    bqFormatString: String,
-    javaFormatString: String
+    function: String
 ) {
-  def toCondition = s"$function('$bqFormatString', '$partitionId')"
-  def formattedOutput: String =
-    LocalDateTime
-      .parse(partitionId, DateTimeFormatter.ofPattern(javaFormatString))
-      .format(DateTimeFormatter.ISO_DATE_TIME)
-}
 
-object TablePartition {
-
-  private val defaultPartition = "YYYY010100"
-
-  def apply(partitionId: String, function: String): TablePartition = {
-    val toAppendForLocalDateTimeFormat = defaultPartition.substring(partitionId.length)
-    TablePartition(partitionId + toAppendForLocalDateTimeFormat, function, "%Y%m%d%H", "yyyyMMddHH")
+  private val standardizedPartition = partitionId match {
+    case "__UNPARTITIONED__" =>
+      TimeFormatting.javaHourlyDateTimeFormatter.format(TimeFormatting.nowUTC)
+    case _ =>
+      TimeFormatting.formatPartitionToHourlyLevel(partitionId)
   }
 
+  def toQueryCondition =
+    s"$function('${TimeFormatting.bqHourlyFormat}', '$standardizedPartition')"
+
+  def formattedForOutput: String =
+    LocalDateTime
+      .parse(standardizedPartition, TimeFormatting.javaHourlyDateTimeFormatter)
+      .format(DateTimeFormatter.ISO_DATE_TIME)
 }

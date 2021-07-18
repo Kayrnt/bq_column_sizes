@@ -58,7 +58,7 @@ object Partitions extends LazyLogging {
     }
 
     DateTimeFormatter
-      .ofPattern(TimeFormatting.hourlyFormat.take(partition.length))
+      .ofPattern(TimeFormatting.javaHourlyFormat.take(partition.length))
       .withZone(ZoneId.of("UTC"))
       .format(instant.minus(finiteOffset.toJava))
   }
@@ -110,8 +110,7 @@ object Partitions extends LazyLogging {
 
   def getPartitioningFieldTypeFunction(
       fields: Seq[Field],
-      partitioningField: String,
-      partitioningType: TimePartitioning.Type
+      partitioningField: String
   ): Option[String] = {
 
     val partitioningFieldType =

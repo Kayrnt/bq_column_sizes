@@ -12,16 +12,16 @@ class TablePartitionSpec extends AnyWordSpec with Matchers {
 
   "Partition" should {
     "compute formattedOutput properly on hourly partitions" in {
-      TablePartition("2021010100", "").formattedOutput should be("2021-01-01T00:00:00")
+      TablePartition("2021010100", "").formattedForOutput should be("2021-01-01T00:00:00")
     }
     "compute formattedOutput properly on daily partitions" in {
-      TablePartition("20210101", "").formattedOutput should be("2021-01-01T00:00:00")
+      TablePartition("20210101", "").formattedForOutput should be("2021-01-01T00:00:00")
     }
     "compute formattedOutput properly on monthly partitions" in {
-      TablePartition("202101", "").formattedOutput should be("2021-01-01T00:00:00")
+      TablePartition("202101", "").formattedForOutput should be("2021-01-01T00:00:00")
     }
     "compute formattedOutput properly on yearly partitions" in {
-      TablePartition("2021", "").formattedOutput should be("2021-01-01T00:00:00")
+      TablePartition("2021", "").formattedForOutput should be("2021-01-01T00:00:00")
     }
     "compute applyOffset properly on hourly" in {
       Partitions.applyOffset("2021010100", Duration("1hour")) should be("2020123123")
@@ -41,8 +41,7 @@ class TablePartitionSpec extends AnyWordSpec with Matchers {
           Field.of("testField", StandardSQLTypeName.TIMESTAMP),
           Field.of("testField2", StandardSQLTypeName.DATE)
         ),
-        "testField",
-        TimePartitioning.Type.DAY
+        "testField"
       ) should be(Some("PARSE_TIMESTAMP"))
     }
     "compute getPartitioningFieldTypeFunction properly on dates" in {
@@ -51,8 +50,7 @@ class TablePartitionSpec extends AnyWordSpec with Matchers {
           Field.of("testField", StandardSQLTypeName.TIMESTAMP),
           Field.of("testField2", StandardSQLTypeName.DATE)
         ),
-        "testField2",
-        TimePartitioning.Type.DAY
+        "testField2"
       ) should be(Some("PARSE_DATE"))
     }
 

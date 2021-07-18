@@ -67,7 +67,7 @@ object Tables extends LazyLogging {
 
     val partitioningFieldTypeFunction: String =
       Partitions
-        .getPartitioningFieldTypeFunction(fields, partitioningField, partitioningType)
+        .getPartitioningFieldTypeFunction(fields, partitioningField)
         .getOrElse(
           throw new IllegalStateException(
             s"Unable to find type for partitioning field ($partitioningField) / partitioning type ($partitioningType)"
@@ -85,21 +85,21 @@ object Tables extends LazyLogging {
 
             val query =
               s"""|#standardSQL
-                  |SELECT $fieldName
+                  |SELECT `$fieldName`
                   |FROM `$tableReference`
-                  |WHERE $partitioningField = ${partition.toCondition}
+                  |WHERE $partitioningField = ${partition.toQueryCondition}
                   |""".stripMargin
             getQueryBytes(
               bq,
               query
             ).flatMap { sizeInBytes =>
               val cs = ColumnSize(
-                partition.formattedOutput, //TODO format for partition frequency
+                partition.formattedForOutput,
                 projectId,
                 dataset,
                 tableStr,
                 fieldName,
-                partition.formattedOutput,
+                partition.formattedForOutput,
                 sizeInBytes
               )
               rowWriter(cs)
@@ -110,14 +110,16 @@ object Tables extends LazyLogging {
   }
 
   def getQueryBytes(bq: BigQuery, queryString: String): IO[Long] = {
+    logger.debug("getQueryBytes: " + queryString)
     val config = QueryJobConfiguration
       .newBuilder(queryString)
       .setDryRun(true)
       .setUseQueryCache(false)
       .build()
     IO {
-      val job                                       = bq.create(JobInfo.of(config))
-      val statistics: JobStatistics.QueryStatistics = job.getStatistics()
+      val job = bq.create(JobInfo.of(config))
+      val statistics: JobStatistics.QueryStatistics =
+        job.getStatistics()
       Long.unbox(statistics.getTotalBytesProcessed())
     }
   }
