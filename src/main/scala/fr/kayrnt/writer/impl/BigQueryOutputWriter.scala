@@ -1,6 +1,7 @@
 package fr.kayrnt.writer.impl
 
 import cats.effect.{IO, Resource}
+import com.google.cloud.bigquery.JobInfo.WriteDisposition
 import com.typesafe.scalalogging.LazyLogging
 import fr.kayrnt.writer.OutputWriterClient
 import com.google.cloud.bigquery.{BigQuery, BigQueryException, CsvOptions, Field, JobId, JobInfo, Schema, StandardSQLTypeName, TableId, TimePartitioning, WriteChannelConfiguration}
@@ -21,7 +22,8 @@ class BigQueryOutputWriter(
     outputFilePath: String,
     partitionOpt: Option[String],
     jobPartition: JobPartition,
-) extends CsvOutputWriter(outputFilePath, partitionOpt)
+    writeDisposition: JobInfo.WriteDisposition
+) extends CsvOutputWriter(outputFilePath, WriteDisposition.WRITE_TRUNCATE)
     with LazyLogging {
 
   val fields = List(
@@ -63,7 +65,7 @@ class BigQueryOutputWriter(
             val writeChannelConfiguration = WriteChannelConfiguration
               .newBuilder(tableId)
               .setSchema(schema)
-              .setWriteDisposition(JobInfo.WriteDisposition.WRITE_TRUNCATE)
+              .setWriteDisposition(writeDisposition)
               .setFormatOptions(csvOptions)
               .pipe(_.setTimePartitioning(partitioning))
               .build

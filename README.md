@@ -70,6 +70,10 @@ Default to day.
   --offset string?                      Partition offset as duration
 Format: <length><unit> based on scala.concurrent.duration.Duration
 Example: 1hour, 1d
+  --write-disposition string?           output write disposition
+based on the BQ write dispositions: write_empty, truncate, append
+Default: truncate
+
 ```
 
 ## Examples

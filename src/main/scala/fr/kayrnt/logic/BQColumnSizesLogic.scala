@@ -5,6 +5,7 @@ import cats.effect.std.Semaphore
 import cats.effect.unsafe.implicits.global
 import cats.implicits._
 import com.google.auth.oauth2.GoogleCredentials
+import com.google.cloud.bigquery.JobInfo.WriteDisposition
 import com.google.cloud.bigquery.{BigQuery, BigQueryOptions, DatasetId, TableId}
 import fr.kayrnt.BQColumnSizesOpts
 import fr.kayrnt.model.{ColumnSize, JobLevel, JobPartition}
@@ -68,6 +69,10 @@ object BQColumnSizesLogic {
       .map(p => JobPartition(p, jobFrequency))
       .getOrElse(JobPartition(jobFrequency))
 
+    val writeDisposition = options.writeDisposition
+      .map(w => WriteDisposition.valueOf(w.toUpperCase))
+      .getOrElse(WriteDisposition.WRITE_TRUNCATE)
+
     val outputWriterImpl = outputWriter match {
       case "bq" =>
         new BigQueryOutputWriter(
@@ -77,9 +82,10 @@ object BQColumnSizesLogic {
           outputTable,
           outputFilePath,
           partition,
-          jobPartition
+          jobPartition,
+          writeDisposition
         )
-      case _ => new CsvOutputWriter(outputFilePath, partition)
+      case _ => new CsvOutputWriter(outputFilePath, writeDisposition)
     }
 
     (options.dataset, options.table) match {

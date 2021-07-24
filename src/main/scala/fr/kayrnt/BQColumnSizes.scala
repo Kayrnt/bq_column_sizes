@@ -77,6 +77,12 @@ case class BQColumnSizesOpts(
         |Example: 1hour, 1d""".stripMargin
     )
     offset: Option[String],
+    @HelpMessage(
+      """output write disposition
+        |based on the BQ write dispositions: write_empty, truncate, append
+        |Default: truncate""".stripMargin
+    )
+    writeDisposition: Option[String],
 )
 
 object BQColumnSizes extends CaseApp[BQColumnSizesOpts] with LazyLogging {
