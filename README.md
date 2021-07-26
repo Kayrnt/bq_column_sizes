@@ -53,14 +53,14 @@ Help options:
 Other options:
   --ep, --execution-project-id string?  GCP project id used for query execution if different from read.
   -p, --project-id string               GCP project id to analyze, if no dataset is provided, it will analyze all datasets for that project.
-  -d, --dataset string?                 dataset to analyze, if no table is provided it will analyze all tables for that dataset.
-  -t, --table string?                   table to analyze
+  -d, --dataset string?                 datasets to analyze, if no table is provided it will analyze all tables for that dataset. Use commas to split datasets if you have multiple datasets (ie ds_a,ds_b,...).
+  -t, --table string?                   table(s) to analyze. Use commas to split tables if you have multiple tables (ie table_a,table_b,...).
   -o, --output-file-path string?        output file path, default in size.csv, you can use an absolute path such as /Users/myUser/size.csv.
   --mcq, --max-concurrent-queries int?  max concurrent queries as you're throttled on actual BQ requests, default to 4.
-  --ow, --output-writer string?         output writer such as bq or csv, default to csv
+  --ow, --output-writer string?         output writer such as bq or csv, default to csv.
   --op, --output-project string?        Bigquery output project when bq output type is selected, default to the projectId field.
-  --od, --output-dataset string?        Bigquery output dataset when bq output type is selected
-  --ot, --output-table string?          Bigquery output table when bq output type is selected
+  --od, --output-dataset string?        Bigquery output dataset when bq output type is selected.
+  --ot, --output-table string?          Bigquery output table when bq output type is selected.
   --pt, --partition string?             Partition to analyze, if not specified all partitions will be analyzed.
 Format: yyyy, yyyyMM, yyyyMMdd, yyyyyMMddHH
 Example: 20210101
@@ -71,7 +71,7 @@ Default to day.
 Format: <length><unit> based on scala.concurrent.duration.Duration
 Example: 1hour, 1d
   --write-disposition string?           output write disposition
-based on the BQ write dispositions: write_empty, truncate, append
+based on the BQ write dispositions: write_empty, truncate or append
 Default: truncate
 
 ```

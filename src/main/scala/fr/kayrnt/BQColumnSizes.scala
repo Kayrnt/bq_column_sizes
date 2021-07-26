@@ -19,12 +19,12 @@ case class BQColumnSizesOpts(
     projectId: String,
     @ExtraName("d")
     @HelpMessage(
-      "dataset to analyze, if no table is provided it will analyze all tables for that dataset."
+      "datasets to analyze, if no table is provided it will analyze all tables for that dataset. Use commas to split datasets if you have multiple datasets (ie ds_a,ds_b,...)."
     )
     dataset: Option[String],
     @ExtraName("t")
     @HelpMessage(
-      "table to analyze"
+      "table(s) to analyze. Use commas to split tables if you have multiple tables (ie table_a,table_b,...)."
     )
     table: Option[String],
     @ExtraName("o")
@@ -39,7 +39,7 @@ case class BQColumnSizesOpts(
     maxConcurrentQueries: Option[Int],
     @ExtraName("ow")
     @HelpMessage(
-      "output writer such as bq or csv, default to csv"
+      "output writer such as bq or csv, default to csv."
     )
     outputWriter: Option[String],
     @ExtraName("op")
@@ -49,12 +49,12 @@ case class BQColumnSizesOpts(
     outputProject: Option[String],
     @ExtraName("od")
     @HelpMessage(
-      "Bigquery output dataset when bq output type is selected"
+      "Bigquery output dataset when bq output type is selected."
     )
     outputDataset: Option[String],
     @ExtraName("ot")
     @HelpMessage(
-      "Bigquery output table when bq output type is selected"
+      "Bigquery output table when bq output type is selected."
     )
     outputTable: Option[String],
     @ExtraName("pt")
@@ -79,7 +79,7 @@ case class BQColumnSizesOpts(
     offset: Option[String],
     @HelpMessage(
       """output write disposition
-        |based on the BQ write dispositions: write_empty, truncate, append
+        |based on the BQ write dispositions: write_empty, truncate or append
         |Default: truncate""".stripMargin
     )
     writeDisposition: Option[String],

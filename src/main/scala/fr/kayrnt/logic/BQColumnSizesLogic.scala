@@ -6,7 +6,7 @@ import cats.effect.unsafe.implicits.global
 import cats.implicits._
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.cloud.bigquery.JobInfo.WriteDisposition
-import com.google.cloud.bigquery.{BigQuery, BigQueryOptions, DatasetId, TableId}
+import com.google.cloud.bigquery.{BigQuery, BigQueryOptions, Dataset, DatasetId, Table, TableId}
 import fr.kayrnt.BQColumnSizesOpts
 import fr.kayrnt.model.{ColumnSize, JobLevel, JobPartition}
 import fr.kayrnt.reader.{Partitions, Tables}
@@ -88,53 +88,42 @@ object BQColumnSizesLogic {
       case _ => new CsvOutputWriter(outputFilePath, writeDisposition)
     }
 
-    (options.dataset, options.table) match {
-      case (None, None) =>
-        withResources(outputWriterImpl) { (sem, csvWriter) =>
-          (for {
-            dataset <- bq.listDatasets(options.projectId).iterateAll().asScala
-            table   <- bq.listTables(dataset.getDatasetId).iterateAll().asScala
-          } yield Tables.analyzeTable(
-            bq,
-            sem,
-            options.projectId,
-            table,
-            csvWriter,
-            partition
-          )).toList.sequence
-        }.unsafeRunSync()
-      case (Some(dataset), None) =>
-        withResources(outputWriterImpl) { (sem, csvWriter) =>
-          (for {
-            table <- bq.listTables(DatasetId.of(options.projectId, dataset)).iterateAll().asScala
-          } yield Tables.analyzeTable(
-            bq,
-            sem,
-            options.projectId,
-            table,
-            csvWriter,
-            partition
-          )).toList.sequence
-        }.unsafeRunSync()
-      case (Some(dataset), Some(table)) =>
-        withResources(outputWriterImpl) { (sem, csvWriter) =>
-          val tableData = bq.getTable(TableId.of(options.projectId, dataset, table))
-          Tables.analyzeTable(
-            bq,
-            sem,
-            options.projectId,
-            tableData,
-            csvWriter,
-            partition
-          )
-        }.unsafeRunSync()
-      case (_, Some(_)) =>
-        throw new IllegalArgumentException(
-          s"Expected dataset details provided but option wasn't provided"
-        )
-      case _ =>
-
+    def datasets = options.dataset match {
+      case None => bq.listDatasets(options.projectId).iterateAll().asScala
+      case Some(datasetStr) =>
+        val datasets = datasetStr.split(",").toList
+        for {
+          dataset <- datasets
+        } yield bq.getDataset(DatasetId.of(options.projectId, dataset))
     }
+
+    def tables = options.table match {
+      case None => datasets.flatMap(ds => bq.listTables(ds.getDatasetId).iterateAll().asScala)
+      case Some(tableStr) =>
+        val tables = tableStr.split(",").toList
+        for {
+          dataset <- datasets
+          table   <- tables
+        } yield bq.getTable(TableId.of(options.projectId, dataset.getDatasetId.getDataset, table))
+    }
+
+    if (options.table.isDefined && options.dataset.isEmpty)
+      throw new IllegalArgumentException(
+        s"Expected dataset details provided but option wasn't provided"
+      )
+
+    withResources(outputWriterImpl) { (sem, csvWriter) =>
+      (for {
+        table <- tables
+      } yield Tables.analyzeTable(
+        bq,
+        sem,
+        options.projectId,
+        table,
+        csvWriter,
+        partition
+      )).toList.sequence
+    }.unsafeRunSync()
 
   }
 
