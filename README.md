@@ -1,92 +1,134 @@
-# BQ Column sizes
+# BigQuery Column Sizes Analyzer
 
-[![](https://jitpack.io/v/Kayrnt/bq_column_sizes.svg)](https://jitpack.io/#Kayrnt/bq_column_sizes)
+[![Jitpack](https://jitpack.io/v/Kayrnt/bq_column_sizes.svg)](https://jitpack.io/#Kayrnt/bq_column_sizes)
 
-This project is meant to allow extract column sizes from BigQuery tables to monitor fields weight changes over time.
+A specialized tool designed to analyze and monitor the storage size of individual columns in BigQuery tables. By leveraging BigQuery's dry-run capabilities, it provides accurate estimates of data volume per column and partition without incurring query costs.
 
-## How it works
+## Key Features
 
-The job will scan selected GCP project / datasets / tables then scan for partitions to launch a select as dry run per field and per partition to store the bytes that would be read.
+- **Cost-Free Analysis**: Uses BigQuery dry runs to calculate column sizes, ensuring no processing costs are incurred during analysis.
+- **Granular Monitoring**: Tracks column sizes at the partition level, allowing for detailed observation of data growth over time.
+- **Flexible Scoping**: Analyze entire projects, specific datasets, or individual tables.
+- **Multiple Output Formats**: Export results to local CSV files or directly into a BigQuery table for further analysis.
+- **Execution Project Support**: Separate the project being analyzed from the project used for query execution (useful for permission or billing management).
 
-### Output
+## How It Works
 
-output data columns:
-- **job_partition**: String => the input partition formatted with the job frequency
-- **project_id**: String => the GCP project id of the read table
-- **dataset**: String => the dataset of the read table,
-- **table**: String => the table name of the read table,
-- **field**: String => the analyzed field name of the red table,
-- **table_partition**: String => the analyzed time partition of the read table,
-- **size_in_bytes**: Long => For the selected field & partition, the size in bytes
+The tool iterates through the specified GCP resources (projects, datasets, and tables). For each table, it identifies the partitions and executes a `SELECT` dry run for every column. The resulting "total bytes processed" statistic is then recorded as the column's size for that specific partition.
 
-#### CSV
-CSV output will create a dedicated file (or overwrite it if existing) that contains the job run will contain the header and the data per line.
+## Prerequisites
 
-#### BigQuery
+- **GCP Credentials**: Ensure you have active Google Cloud credentials. The tool uses Application Default Credentials (ADC).
+  ```bash
+  gcloud auth application-default login
+  ```
+- **Permissions**: The user/service account must have:
+  - `bigquery.jobs.create` on the execution project.
+  - `bigquery.tables.get` and `bigquery.tables.list` on the target project/datasets.
+  - `bigquery.tables.getData` (or metadata access) to perform dry runs.
 
-BigQuery output will create a dedicated partitioned table if not existing to store the output per partition (based on job_frequency parameter or else daily).
+## Installation
 
+### Quick Start (via Coursier)
 
-## How to launch
+The easiest way to run the tool is using [Coursier](https://get-coursier.io/):
 
-There is multiple ways to start the job:
-- Clone the source code a build the project to run the `BQColumnSizes` (Main) class
-- Install Coursier and fetch the Jitpack package
+1. Fetch the dependency from Jitpack:
+   ```bash
+   coursier fetch -r jitpack com.github.Kayrnt:bq_column_sizes:master-SNAPSHOT
+   ```
+2. Launch the tool:
+   ```bash
+   coursier launch -r jitpack com.github.Kayrnt:bq_column_sizes:master-SNAPSHOT -- --help
+   ```
 
-The Coursier + Jitpack option is likely easier to use:
-1. Install [Coursier](https://get-coursier.io/docs/cli-installation)
-2. Fetch the dependency from Jitpack 
-   ```coursier fetch -r jitpack com.github.Kayrnt:bq_column_sizes:master-SNAPSHOT```
-3. Start the job
-```coursier launch -r jitpack com.github.Kayrnt:bq_column_sizes:master-SNAPSHOT -- --help```
+### Building from Source
 
-## Usage
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Kayrnt/bq_column_sizes.git
+   cd bq_column_sizes
+   ```
+2. Build and run using SBT:
+   ```bash
+   sbt "run --help"
+   ```
 
-``` 
-BQColumnSizes 1.0.0
-Usage: bq-column-sizes [options]
+## Usage & Configuration
 
-Help options:
-  --usage     Print usage and exit
-  -h, --help  Print help message and exit
+### Command Line Options
 
-Other options:
-  --ep, --execution-project-id string?  GCP project id used for query execution if different from read.
-  -p, --project-id string               GCP project id to analyze, if no dataset is provided, it will analyze all datasets for that project.
-  -d, --dataset string?                 datasets to analyze, if no table is provided it will analyze all tables for that dataset. Use commas to split datasets if you have multiple datasets (ie ds_a,ds_b,...).
-  -t, --table string?                   table(s) to analyze. Use commas to split tables if you have multiple tables (ie table_a,table_b,...).
-  -o, --output-file-path string?        output file path, default in size.csv, you can use an absolute path such as /Users/myUser/size.csv.
-  --mcq, --max-concurrent-queries int?  max concurrent queries as you're throttled on actual BQ requests, default to 4.
-  --ow, --output-writer string?         output writer such as bq or csv, default to csv.
-  --op, --output-project string?        Bigquery output project when bq output type is selected, default to the projectId field.
-  --od, --output-dataset string?        Bigquery output dataset when bq output type is selected.
-  --ot, --output-table string?          Bigquery output table when bq output type is selected.
-  --pt, --partition string?             Partition to analyze, if not specified all partitions will be analyzed.
-Format: yyyy, yyyyMM, yyyyMMdd, yyyyyMMddHH
-Example: 20210101
-  --jf, --job-frequency string?         Job frequency: it's how often you're going to run the job so that the job know how to partition the data.
-Values: year, month, day, hour.
-Default to day.
-  --offset string?                      Partition offset as duration
-Format: <length><unit> based on scala.concurrent.duration.Duration
-Example: 1hour, 1d
-  --write-disposition string?           output write disposition
-based on the BQ write dispositions: write_empty, truncate or append
-Default: truncate
+| Option                     | Short   | Description                                                | Default        |
+| :------------------------- | :------ | :--------------------------------------------------------- | :------------- |
+| `--project-id`             | `-p`    | **(Required)** GCP project ID to analyze.                  | -              |
+| `--execution-project-id`   | `-e`    | GCP project ID used for query execution.                   | Same as `-p`   |
+| `--dataset`                | `-d`    | Comma-separated list of datasets to analyze.               | All datasets   |
+| `--table`                  | `-t`    | Comma-separated list of tables to analyze.                 | All tables     |
+| `--output-writer`          | `--ow`  | Output format: `csv` or `bq`.                              | `csv`          |
+| `--output-file-path`       | `-o`    | Path for the CSV output file.                              | `size.csv`     |
+| `--max-concurrent-queries` | `--mcq` | Maximum number of concurrent BigQuery requests.            | `4`            |
+| `--partition`              | `--pt`  | Specific partition to analyze (e.g., `20210101`).          | All partitions |
+| `--job-frequency`          | `--jf`  | Partitioning frequency: `year`, `month`, `day`, `hour`.    | `day`          |
+| `--offset`                 | -       | Partition offset as duration (e.g., `1d`, `1hour`).        | -              |
+| `--write-disposition`      | -       | BQ write disposition: `write_empty`, `truncate`, `append`. | `truncate`     |
 
-```
+### BigQuery Output Options
+
+When using `--ow bq`, the following options are available:
+
+| Option             | Short  | Description                              |
+| :----------------- | :----- | :--------------------------------------- |
+| `--output-project` | `--op` | Target GCP project for the output table. |
+| `--output-dataset` | `--od` | Target dataset for the output table.     |
+| `--output-table`   | `--ot` | Target table name for the output.        |
 
 ## Examples
 
-For instance, following command allows to get the column sizes from `bigquery-public-data.crypto_bitcoin.blocks` table on partition `20210501` and output the result in table `my_gcp_project.my_dataset.my_bq_column_sizes` (which will be partitioned per day as default):
-```
-bq-column-sizes -p bigquery-public-data -d crypto_bitcoin -t blocks --ow bq --ot my_gcp_project --od my_dataset --ot my_bq_column_sizes --pt 20210501
+### Analyze a Public Dataset and Save to CSV
+
+```bash
+bq-column-sizes -p bigquery-public-data -d crypto_bitcoin -t blocks --pt 20210501 -o bitcoin_sizes.csv
 ```
 
-If you would like to store it in a local CSV file, you can use simply use:
-```
-bq-column-sizes -p bigquery-public-data -d crypto_bitcoin -t blocks --pt 20210501
+### Analyze and Export to a BigQuery Table
+
+```bash
+bq-column-sizes \
+  -p my-source-project \
+  -d my_dataset \
+  --ow bq \
+  --op my-billing-project \
+  --od monitoring_dataset \
+  --ot column_size_history
 ```
 
-## Known limitations
-- If you're using range partitioning on a read table, that partitioning will be ignored and treated as a table without partitioning. It's done so because the job is meant to be run on regular basis (ie a daily job).  
+### Using a Dedicated Execution Project
+
+If you have read access to a project but want to use a different project for query execution (billing):
+
+```bash
+bq-column-sizes -p target-project-id -e billing-project-id -d production_dataset
+```
+
+## Output Schema
+
+The tool generates data with the following columns:
+
+| Column            | Type      | Description                                         |
+| :---------------- | :-------- | :-------------------------------------------------- |
+| `job_partition`   | TIMESTAMP | The timestamp of the analysis run.                  |
+| `project_id`      | STRING    | The GCP project ID of the analyzed table.           |
+| `dataset`         | STRING    | The dataset name.                                   |
+| `table`           | STRING    | The table name.                                     |
+| `field`           | STRING    | The specific column/field name.                     |
+| `table_partition` | TIMESTAMP | The specific partition of the table being analyzed. |
+| `size_in_bytes`   | INT64     | The calculated size of the column in bytes.         |
+
+## Known Limitations
+
+- **Range Partitioning**: Currently, tables using integer range partitioning are treated as non-partitioned tables.
+- **Legacy SQL**: Some internal queries may use Legacy SQL syntax for partition discovery.
+
+## License
+
+This project is licensed under the [LICENSE](LICENSE) file included in the repository.
