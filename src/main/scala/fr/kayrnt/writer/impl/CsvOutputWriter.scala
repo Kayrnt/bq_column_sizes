@@ -37,7 +37,7 @@ class CsvOutputWriter(outputFilePath: String, writeDisposition: WriteDisposition
         throw new IllegalStateException(s"Output file ($outputFilePath) is directory")
 
       val fileIsEmpty = f.length() == 0
-      if (!fileIsEmpty && writeDisposition != WriteDisposition.WRITE_EMPTY)
+      if (!fileIsEmpty && writeDisposition == WriteDisposition.WRITE_EMPTY)
         throw new IllegalStateException(
           s"Output file ($outputFilePath) is not empty and write disposition write_empty expects empty/non existing file, use write_truncate to overwrite."
         )

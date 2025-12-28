@@ -82,11 +82,12 @@ object Partitions extends LazyLogging {
       .map(partition =>
         s"""\nWHERE partition_id LIKE "${formatPartition(partition)}" """
       ).getOrElse("")
-    val query = s"""#legacySQL
+    val legacyTableReference = tableReference.replaceFirst("\\.", ":")
+    val query                = s"""#legacySQL
                    |SELECT
                    |  partition_id
                    |FROM
-                   |  [$tableReference$$__PARTITIONS_SUMMARY__] $whereClause
+                   |  [$legacyTableReference$$__PARTITIONS_SUMMARY__] $whereClause
                    |order by partition_id desc
                    |""".stripMargin
     logger.debug("query : " + query)

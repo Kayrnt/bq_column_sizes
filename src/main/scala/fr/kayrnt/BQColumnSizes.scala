@@ -9,7 +9,7 @@ import fr.kayrnt.logic.BQColumnSizesLogic
 @AppVersion("1.0.0")
 @ProgName("bq-column-sizes")
 case class BQColumnSizesOpts(
-    @ExtraName("ep")
+    @ExtraName("e")
     @HelpMessage("GCP project id used for query execution if different from read.")
     executionProjectId: Option[String],
     @ExtraName("p")

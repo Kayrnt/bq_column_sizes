@@ -98,13 +98,16 @@ object BQColumnSizesLogic {
     }
 
     def tables = options.table match {
-      case None => datasets.flatMap(ds => bq.listTables(ds.getDatasetId).iterateAll().asScala)
+      case None =>
+        datasets.flatMap(ds => bq.listTables(ds.getDatasetId).iterateAll().asScala)
       case Some(tableStr) =>
         val tables = tableStr.split(",").toList
         for {
           dataset <- datasets
           table   <- tables
-        } yield bq.getTable(TableId.of(options.projectId, dataset.getDatasetId.getDataset, table))
+        } yield bq.getTable(
+          TableId.of(options.projectId, dataset.getDatasetId.getDataset, table)
+        )
     }
 
     if (options.table.isDefined && options.dataset.isEmpty)
